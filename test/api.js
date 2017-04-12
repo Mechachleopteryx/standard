@@ -48,4 +48,3 @@ test('lintText', function t(assert) {
         assert.end();
     }
 });
->>>>>>> 82cef5d... Split files and run eslint on them in separate processes to utilize multiple cores
