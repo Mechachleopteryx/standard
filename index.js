@@ -17,8 +17,9 @@ var fs = require("fs")
 var path = require("path")
 var cp = require('child_process')
 var _ = require('lodash')
+var os = require('os');
 
-var NUM_FORKS = 8;
+var NUM_FORKS = os.cpus().length - 1;
 
 var DEFAULT_PATTERNS = [
   '**/*.js',
