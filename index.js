@@ -11,8 +11,6 @@ var glob = require('glob')
 var parallel = require('run-parallel')
 var path = require('path')
 var uniq = require('uniq')
-var cloneDeep = require('clone-deep')
-var deepExtend = require('deep-extend')
 var fs = require("fs")
 var path = require("path")
 var cp = require('child_process')
@@ -130,6 +128,7 @@ function lintFiles (files, opts, cb) {
     editorConfigGetIndent(root, function (err, indent) {
       if (err) return cb(err)
       try {
+        ESLINT_CONFIG.baseConfig.rules.indent = [2, indent]
         executeInParallel(files, ESLINT_CONFIG, cb)
       } catch (err) {
         return cb(err)
