@@ -11,6 +11,13 @@ var glob = require('glob')
 var parallel = require('run-parallel')
 var path = require('path')
 var uniq = require('uniq')
+var fs = require("fs")
+var path = require("path")
+var cp = require('child_process')
+var _ = require('lodash')
+var os = require('os');
+
+var NUM_FORKS = os.cpus().length - 1;
 
 var DEFAULT_PATTERNS = [
   '**/*.js',
@@ -120,16 +127,48 @@ function lintFiles (files, opts, cb) {
     var root = commondir(files)
     editorConfigGetIndent(root, function (err, indent) {
       if (err) return cb(err)
-      var result
-      ESLINT_CONFIG.baseConfig.rules.indent = [2, indent]
       try {
-        result = new eslint.CLIEngine(ESLINT_CONFIG).executeOnFiles(files)
+        ESLINT_CONFIG.baseConfig.rules.indent = [2, indent]
+        executeInParallel(files, ESLINT_CONFIG, cb)
       } catch (err) {
         return cb(err)
       }
-      return cb(null, result)
     })
 
+  })
+}
+
+function executeInParallel(files, opts, cb) {
+  var chunkResults = {};
+  var fileChunks = _.chunk(files, Math.ceil(files.length/NUM_FORKS))
+  var pendingResults = fileChunks.length;
+  var results = { results: [], errorCount: 0, warningCount: 0 }
+
+  function onAllDone() {
+    fileChunks.forEach(function(chunk) {
+      results.results = results.results.concat(chunkResults[chunk].results)
+      results.errorCount += chunkResults[chunk].errorCount
+      results.warningCount += chunkResults[chunk].warningCount
+    })
+    cb(null, results)
+  }
+
+  fileChunks.forEach(function(chunk, i) {
+    var fork = cp.fork(__dirname + '/executeOnFiles')
+    fork.send(opts)
+    fork.send(chunk)
+    fork.send('end')
+    fork.on('message', function(results) {
+      if(results.isError) {
+        return cb(new Error(result.error))
+      }
+
+      chunkResults[chunk] = results
+      pendingResults--
+      if(pendingResults == 0) {
+        onAllDone()
+      }
+    })
   })
 }
 
